@@ -1,90 +1,50 @@
-import pandas as pd
-import numpy as np
-from sklearn.datasets import fetch_california_housing
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, r2_score
+import pytest
 import joblib
-import os
+import numpy as np
 
-# Función para cargar los datos
-def load_data():
-    try:
-        housing = fetch_california_housing()
-        X = pd.DataFrame(housing.data, columns=housing.feature_names)
-        y = pd.Series(housing.target, name='MedHouseVal')
-        return X, y
-    except Exception as e:
-        print(f"Error al cargar los datos: {e}")
-        raise
+# Prueba para verificar la carga del modelo
+def test_model_loading():
+    model = joblib.load('model.pkl')
+    assert model is not None, "El modelo no se cargó correctamente"
 
-# Validar la integridad de los datos
-def validate_data(X, y):
-    assert X.isnull().sum().sum() == 0, "Los datos contienen valores nulos"
-    assert len(X) == len(y), "El número de muestras y etiquetas no coincide"
-    assert X.shape[1] == 8, f"Se esperaban 8 características, pero se encontraron {X.shape[1]}"
+# Prueba para realizar una predicción de prueba
+def test_model_prediction():
+    model = joblib.load('model.pkl')
+    
+    # Datos de prueba simples
+    test_data = np.array([8.3252, 41.0, 6.984127, 1.023809, 322.0, 2.555556, 37.88, -122.23]).reshape(1, -1)
+    
+    # Realizar predicción
+    prediction = model.predict(test_data)
+    
+    # Validaciones básicas
+    assert prediction is not None, "La predicción falló"
+    assert prediction.shape == (1,), "La predicción debe ser un array unidimensional"
+    assert isinstance(prediction[0], (int, float)), "La predicción debe ser un número"
 
-# Función para dividir los datos
-def split_data(X, y):
-    try:
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        return X_train, X_test, y_train, y_test
-    except Exception as e:
-        print(f"Error al dividir los datos: {e}")
-        raise
+# Prueba para verificar que el modelo es consistente (reproduce los mismos resultados)
+def test_model_consistency():
+    model = joblib.load('model.pkl')
+    
+    # Datos de prueba simples
+    test_data = np.array([8.3252, 41.0, 6.984127, 1.023809, 322.0, 2.555556, 37.88, -122.23]).reshape(1, -1)
 
-# Función para entrenar el modelo
-def train_model(X_train, y_train):
-    try:
-        model = LinearRegression()
-        model.fit(X_train, y_train)
-        return model
-    except Exception as e:
-        print(f"Error al entrenar el modelo: {e}")
-        raise
+    # Realizar predicciones múltiples veces
+    prediction_1 = model.predict(test_data)
+    prediction_2 = model.predict(test_data)
 
-# Función para evaluar el modelo
-def evaluate_model(model, X_test, y_test):
-    try:
-        y_pred = model.predict(X_test)
-        mse = mean_squared_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
-        print(f"Mean Squared Error: {mse}")
-        print(f"R^2 Score: {r2}")
-        assert mse < 1.0, "El MSE es demasiado alto, considera mejorar el modelo"
-        assert r2 > 0.5, "El R^2 Score es bajo, considera mejorar el modelo"
-    except Exception as e:
-        print(f"Error al evaluar el modelo: {e}")
-        raise
+    # Las predicciones deben ser idénticas
+    assert np.array_equal(prediction_1, prediction_2), "El modelo debe producir predicciones consistentes"
 
-# Función para guardar el modelo
-def save_model(model, filepath='model.pkl'):
-    try:
-        joblib.dump(model, filepath)
-        assert os.path.exists(filepath), f"No se pudo guardar el modelo en {filepath}"
-        print(f"Modelo guardado exitosamente en {filepath}")
-    except Exception as e:
-        print(f"Error al guardar el modelo: {e}")
-        raise
+# Prueba básica para verificar que el modelo no produce valores extremadamente altos o bajos
+def test_model_output_range():
+    model = joblib.load('model.pkl')
+    
+    # Datos de prueba simples
+    test_data = np.array([8.3252, 41.0, 6.984127, 1.023809, 322.0, 2.555556, 37.88, -122.23]).reshape(1, -1)
 
-# Flujo principal
-if __name__ == "__main__":
-    try:
-        # Cargar y validar los datos
-        X, y = load_data()
-        validate_data(X, y)
+    # Realizar predicción
+    prediction = model.predict(test_data)
 
-        # Dividir los datos
-        X_train, X_test, y_train, y_test = split_data(X, y)
-
-        # Entrenar el modelo
-        model = train_model(X_train, y_train)
-
-        # Evaluar el modelo
-        evaluate_model(model, X_test, y_test)
-
-        # Guardar el modelo
-        save_model(model)
-
-    except Exception as e:
-        print(f"Fallo en el proceso de entrenamiento: {e}")
+    # Verificar que la predicción está en un rango esperado (ajusta este rango según tu caso)
+    assert 0.0 <= prediction[0] <= 10.0, f"La predicción está fuera del rango esperado: {prediction[0]}"
